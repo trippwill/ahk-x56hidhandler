@@ -1,0 +1,9 @@
+[submodule "lib/ahk-hidmessage"]
+	path = lib/ahk-hidmessage
+	url = https://github.com/CharlesWillis3/ahk-hidmessage.git
+[submodule "lib/ahk-utils"]
+	path = lib/ahk-utils
+	url = https://github.com/CharlesWillis3/ahk-utils.git
+[submodule "lib/AHKHID"]
+	path = lib/AHKHID
+	url = https://github.com/jleb/AHKHID.git
