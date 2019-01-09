@@ -1,5 +1,5 @@
 ﻿/* 
-X56 HID Message Handler
+X56 MESSAGE SERVER
 0.1 [Debug]
 
 This version outputs additional debug information at a small performance cost.
@@ -19,10 +19,10 @@ ListLines off
 SendMode Input
 SetWorkingDir %A_ScriptDir%
 
-#include lib/ahk-hidmessage/HIDMESSAGE_DBG.ahk
-#include lib/BASEHANDLERS.ahk
-#include SHELL.ahk
-#include x56_profile.ahk
+#include lib/ahk-hidmessage/CHidMessageByteDispatcher.ahk
+#include lib/ahk-argybargy/CArgyBargyServer.ahk
+#include CX56ProfileShell.ahk
+#include X56_MSG.ahk
 
 ;Constants
 DEBUG := 2 ; Valid values are 0 (off), 1 (low), 2 (high), 3 (verbose)
@@ -31,14 +31,8 @@ DEBUG := 2 ; Valid values are 0 (off), 1 (low), 2 (high), 3 (verbose)
 throttle_description := {USAGE_PAGE: 1, USAGE: 4, VENDOR_ID: 1848, PRODUCT_ID: 41505, VERSION: 256}
 
 shell := new CX56ProfileShell
-shell.AddExeProfile("notepad.exe", "notepad.ahk")
-shell.AddExeProfile("discord.exe", "discord.ahk")
-
-throttle_profile := new Throttle
-if (!IsObject(throttle_profile))
-    throw "The selected profile must contain a class named 'Throttle'"
-
-throttle_byte_handler := new CX56ThrottleByteHandler(throttle_profile)
+ab_server := new CArgyBargyServer(X56_SERVER_ID)
+throttle_byte_handler := new CX56ThrottleByteHandler(ab_server)
 dispatcher := new CHidMessageByteDispatcher(shell.HWND, throttle_description, throttle_byte_handler, throttle_byte_handler.InitState, Func("GetMode"))
 
 GetMode(ByRef pData) {
@@ -65,8 +59,8 @@ class CX56ThrottleByteHandler
 {
     InitState := [0x00, 0xFF, 0xFF, 0x0F, 0x00, 0x00, 0x00, 0x20, 0x7E, 0x7F, 0x7E, 0x7F, 0x00, 0x00]
 
-    __New(throttleProfile) {
-        this.throttleHandler := throttleProfile
+    __New(msgServer) {
+        this.msgServer := msgServer
     }
 
     __Call(name, curr, last, mode) {
@@ -74,23 +68,24 @@ class CX56ThrottleByteHandler
     }
 
     0x4(curr, last, mode) {
-        local currLo := LO_NYB(curr)
-        local currHi := HI_NYB(curr)
-        local lastLo := LO_NYB(last)
-        local lastHi := HI_NYB(last)
+        global X56T_SW1, X56T_SW2, X56T_SW3, X56T_SW4, X56T_SW5, X56T_SW6, X56T_TG1_U
+        currLo := LO_NYB(curr)
+        currHi := HI_NYB(curr)
+        lastLo := LO_NYB(last)
+        lastHi := HI_NYB(last)
 
         if (currLo != lastLo) {
             ;if the current value is 0, then use the last value to identify the switch
             switch := currLo == 0x0 ? lastLo : currLo 
 
             if (switch == 0x1)
-                this.throttleHandler.SW4(curr, mode)
+                this.msgServer.PostMessage(X56T_SW4, curr, mode)
             else if (switch == 0x2)
-                this.throttleHandler.SW5(curr, mode)
+                this.msgServer.PostMessage(X56T_SW5, curr, mode)
             else if (switch == 0x4)
-                this.throttleHandler.SW6(curr, mode)
+                this.msgServer.PostMessage(X56T_SW6, curr, mode)
             else if (switch == 0x8)
-                this.throttleHandler.TGL1_U(curr, mode)
+                this.msgServer.PostMessage(X56T_TG1_U, curr, mode)
         }
 
         if (currHi != lastHi) {
@@ -98,11 +93,11 @@ class CX56ThrottleByteHandler
             switch := currHi == 0x0 ? lastHi : currHi
 
             if (switch == 0x2)
-                this.throttleHandler.SW1(curr, mode)
+                this.msgServer.PostMessage(X56T_SW1, curr, mode)
             else if (switch == 0x4)
-                this.throttleHandler.SW2(curr, mode)
+                this.msgServer.PostMessage(X56T_SW2, curr, mode)
             else if (switch == 0x8)
-                this.throttleHandler.SW3(curr, mode)
+                this.msgServer.PostMessage(X56T_SW3, curr, mode)
         }
     }
 

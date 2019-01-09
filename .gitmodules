@@ -7,3 +7,6 @@
 [submodule "lib/AHKHID"]
 	path = lib/AHKHID
 	url = https://github.com/jleb/AHKHID.git
+[submodule "lib/ahk-argybargy"]
+	path = lib/ahk-argybargy
+	url = https://github.com/CharlesWillis3/ahk-argybargy.git
