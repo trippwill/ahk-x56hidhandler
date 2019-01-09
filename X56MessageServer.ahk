@@ -20,9 +20,8 @@ SendMode Input
 SetWorkingDir %A_ScriptDir%
 
 #include lib/ahk-hidmessage/CHidMessageByteDispatcher.ahk
-#include lib/ahk-argybargy/CArgyBargyServer.ahk
+#include lib/ahk-argybargy/CArgyBargyIniServer.ahk
 #include CX56ProfileShell.ahk
-#include X56_MSG.ahk
 
 ;Constants
 DEBUG := 2 ; Valid values are 0 (off), 1 (low), 2 (high), 3 (verbose)
@@ -31,9 +30,9 @@ DEBUG := 2 ; Valid values are 0 (off), 1 (low), 2 (high), 3 (verbose)
 throttle_description := {USAGE_PAGE: 1, USAGE: 4, VENDOR_ID: 1848, PRODUCT_ID: 41505, VERSION: 256}
 
 shell := new CX56ProfileShell
-ab_server := new CArgyBargyServer(X56_SERVER_ID)
+ab_server := new CArgyBargyIniServer(A_ScriptDir . "\X56.ini")
 throttle_byte_handler := new CX56ThrottleByteHandler(ab_server)
-dispatcher := new CHidMessageByteDispatcher(shell.HWND, throttle_description, throttle_byte_handler, throttle_byte_handler.InitState, Func("GetMode"))
+dispatcher := new CHidMessageByteDispatcher(shell.HWND, throttle_description, throttle_byte_handler, CX56ThrottleByteHandler.InitState, Func("GetMode"))
 
 GetMode(ByRef pData) {
     static OFFSET_MODE := 7
@@ -57,7 +56,7 @@ GetMode(ByRef pData) {
 
 class CX56ThrottleByteHandler
 {
-    InitState := [0x00, 0xFF, 0xFF, 0x0F, 0x00, 0x00, 0x00, 0x20, 0x7E, 0x7F, 0x7E, 0x7F, 0x00, 0x00]
+    static InitState := [0x00, 0xFF, 0xFF, 0x0F, 0x00, 0x00, 0x00, 0x20, 0x7E, 0x7F, 0x7E, 0x7F, 0x00, 0x00]
 
     __New(msgServer) {
         this.msgServer := msgServer
@@ -68,7 +67,6 @@ class CX56ThrottleByteHandler
     }
 
     0x4(curr, last, mode) {
-        global X56T_SW1, X56T_SW2, X56T_SW3, X56T_SW4, X56T_SW5, X56T_SW6, X56T_TG1_U
         currLo := LO_NYB(curr)
         currHi := HI_NYB(curr)
         lastLo := LO_NYB(last)
@@ -79,13 +77,13 @@ class CX56ThrottleByteHandler
             switch := currLo == 0x0 ? lastLo : currLo 
 
             if (switch == 0x1)
-                this.msgServer.PostMessage(X56T_SW4, curr, mode)
+                this.msgServer.X56T_SW4(curr, mode)
             else if (switch == 0x2)
-                this.msgServer.PostMessage(X56T_SW5, curr, mode)
+                this.msgServer.X56T_SW5( curr, mode)
             else if (switch == 0x4)
-                this.msgServer.PostMessage(X56T_SW6, curr, mode)
+                this.msgServer.X56T_SW6(curr, mode)
             else if (switch == 0x8)
-                this.msgServer.PostMessage(X56T_TG1_U, curr, mode)
+                this.msgServer.X56T_TG1U(curr, mode)
         }
 
         if (currHi != lastHi) {
@@ -93,30 +91,30 @@ class CX56ThrottleByteHandler
             switch := currHi == 0x0 ? lastHi : currHi
 
             if (switch == 0x2)
-                this.msgServer.PostMessage(X56T_SW1, curr, mode)
+                this.msgServer.X56T_SW1(curr, mode)
             else if (switch == 0x4)
-                this.msgServer.PostMessage(X56T_SW2, curr, mode)
+                this.msgServer.X56T_SW2(curr, mode)
             else if (switch == 0x8)
-                this.msgServer.PostMessage(X56T_SW3, curr, mode)
+                this.msgServer.X56T_SW3(curr, mode)
         }
     }
 
     0x5(curr, last, mode) {
-        local currLo := LO_NYB(curr)
-        local currHi := HI_NYB(curr)
-        local lastLo := LO_NYB(last)
-        local lastHi := HI_NYB(last)
+        currLo := LO_NYB(curr)
+        currHi := HI_NYB(curr)
+        lastLo := LO_NYB(last)
+        lastHi := HI_NYB(last)
 
         if (currLo != lastLo) {
             ;if the current value is 0, then use the last value to identify the switch
             switch := currLo == 0x0 ? lastLo : currLo 
 
             if (switch == 0x1)
-                this.throttleHandler.TGL3_D(curr, mode)
+                this.msgServer.X56T_TG3D(curr, mode)
             else if (switch == 0x2)
-                this.throttleHandler.TGL4_U(curr, mode)
+                this.msgServer.X56T_TG4U(curr, mode)
             else if (switch == 0x4)
-                this.throttleHandler.TGL4_D(curr, mode)
+                this.msgServer.X56T_TG4D(curr, mode)
         }
 
         if (currHi != lastHi) {
@@ -124,21 +122,21 @@ class CX56ThrottleByteHandler
             switch := currHi == 0x0 ? lastHi : currHi
 
             if (switch == 0x1)
-                this.throttleHandler.TGL1_D(curr, mode)
+                this.msgServer.X56T_TG1D(curr, mode)
             else if (switch == 0x2)
-                this.throttleHandler.TGL2_U(curr, mode)
+                this.msgServer.X56T_TG2U(curr, mode)
             else if (switch == 0x4)
-                this.throttleHandler.TGL2_D(curr, mode)
+                this.msgServer.X56T_TG2D(curr, mode)
             else if (switch == 0x8)
-                this.throttleHandler.TGL3_U(curr, mode)
+                this.msgServer.X56T_TG3U(curr, mode)
         }
     }
 
     0x7(curr, last, mode) {
-        local currLo := LO_NYB(curr)
-        local currHi := HI_NYB(curr)
-        local lastLo := LO_NYB(last)
-        local lastHi := HI_NYB(last)
+        currLo := LO_NYB(curr)
+        currHi := HI_NYB(curr)
+        lastLo := LO_NYB(last)
+        lastHi := HI_NYB(last)
 
         if (currLo != lastLo) {
             ; even number indicates that SLD is off
@@ -146,30 +144,30 @@ class CX56ThrottleByteHandler
             lastSld := mod(lastLo, 2)
 
             if (currSld != lastSld)
-                this.throttleHandler.SLD(curr, mode)
+                this.msgServer.X56T_SLD(curr, mode)
         }
 
         if (currHi != lastHi) {
             if (currHi == 0x2)
-                this.throttleHandler.SCROL_F(curr, mode)
+                this.msgServer.X56T_SCROLF(curr, mode)
             else if (currHi == 0x4)
-                this.throttleHandler.SCROL_B(curr, mode)
+                this.msgServer.X56T_SCROLB(curr, mode)
         }
     }
 
     0x9(curr, last, mode) {
-        this.throttleHandler.MINISTICK_X(curr, mode)
+        this.msgServer.X56T_MINISTICKX(curr, mode)
     }
 
     0xB(curr, last, mode) {
-        this.throttleHandler.MINISTICK_Y(curr, mode)
+        this.msgServer.X56T_MINISTICKY(curr, mode)
     }
 
     0xC(curr, last, mode) {
-        this.throttleHandler.RTY4(curr, mode)
+        this.msgServer.X56T_RTY4(curr, mode)
     }
 
     0xD(curr, last, mode) {
-        this.throttleHandler.RTY3(curr, mode)
+        this.msgServer.X56T_RTY3(curr, mode)
     }
 }
